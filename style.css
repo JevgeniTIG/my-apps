@@ -1,0 +1,53 @@
+:root{
+  --green:#4CAF50; --green-dark:#2E7D32;
+  --ink:#1d2b1d; --muted:#5c6b5c;
+  --bg:#f4f7f2; --card:#ffffff; --line:#e3e9e0;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --ink:#e9efe7; --muted:#a3b1a3; --bg:#141a14; --card:#1c241c; --line:#2c362c; }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.65 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+.wrap{max-width:720px;margin:0 auto;padding:40px 20px 64px}
+
+.back{display:inline-block;margin-bottom:22px;text-decoration:none;color:var(--muted)}
+
+header{display:flex;gap:18px;align-items:center;margin-bottom:8px}
+header img{width:88px;height:88px;border-radius:20px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+header.hub{margin-bottom:0}
+h1{font-family:"Courier New",monospace;font-size:32px;font-weight:900;letter-spacing:1px;margin:0}
+.sub{color:var(--muted);margin:4px 0 0}
+.upd{color:var(--muted);margin:0 0 28px}
+
+.store{display:inline-block;margin:22px 0 0;background:var(--green);color:#fff;
+  text-decoration:none;font-family:"Courier New",monospace;font-weight:800;letter-spacing:2px;
+  padding:13px 30px;border-radius:12px}
+.store:hover{background:var(--green-dark)}
+
+h2{font-family:"Courier New",monospace;font-size:19px;letter-spacing:2px;
+   margin:42px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+p{margin:0 0 14px}
+a{color:var(--green)}
+.q{font-weight:700;margin:20px 0 4px}
+.a{color:var(--muted);margin:0 0 12px}
+ol{padding-left:20px;color:var(--muted)}
+ol b{color:var(--ink)}
+li{margin-bottom:6px}
+
+.cards{display:grid;gap:12px}
+.card{display:flex;gap:16px;align-items:center;text-decoration:none;color:inherit;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card:hover{border-color:var(--green)}
+.card img{width:62px;height:62px;border-radius:14px;flex:none}
+.card b{display:block;font-size:17px}
+.card span{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+
+.mail{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:14px}
+.mail a{color:var(--green);font-weight:700}
+
+footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+footer a{color:var(--muted)}
