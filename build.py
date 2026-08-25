@@ -76,9 +76,12 @@ GAMES = [
             ("Answer the question", "to reveal a hidden letter."),
             ("Guess the word", "before your spins run out."),
         ],
-        purchases="The game offers optional one-time purchases.",
-        stored="your progress and settings",
+        purchases="There is one optional purchase that supports development. The game is fully "
+                  "playable without it.",
+        stored="your progress, statistics and settings, and whether you have made the optional "
+               "purchase",
         network="The game runs on your device. A connection is only needed for purchases.",
+        terms=True,
     ),
     dict(
         slug="doodle", name="Smash My Doodle", appid="6763943311",
