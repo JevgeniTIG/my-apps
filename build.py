@@ -60,6 +60,7 @@ GAMES = [
         network="Single player and Pass &amp; Play work with no connection at all. Two-device "
                 "play sends moves <b>directly between the two devices on your local Wi-Fi "
                 "network</b> — there is no server in between and nothing is stored online.",
+        terms=True,
     ),
     dict(
         slug="spinnwin", name="Spin N Win", appid="6771497345",
@@ -96,9 +97,11 @@ GAMES = [
             ("Smash it.", "Fling projectiles at it before time runs out."),
             ("Clear nine levels", "and the boss at the end."),
         ],
-        purchases="The game offers optional one-time purchases.",
-        stored="your progress and settings",
+        purchases="There is one optional purchase that supports development. The game is fully "
+                  "playable without it.",
+        stored="your progress, your settings, and whether you have made the optional purchase",
         network="The game runs on your device. A connection is only needed for purchases.",
+        terms=True,
     ),
     dict(
         slug="puzzle", name="Yet Another Puzzle", appid="6763130976",
