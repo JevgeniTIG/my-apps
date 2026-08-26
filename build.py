@@ -114,10 +114,13 @@ GAMES = [
             ("Choose piece count and effect.", "More pieces, more evenings."),
             ("Solve it", "or hand it to someone else to solve."),
         ],
-        purchases="The game offers optional one-time purchases.",
-        stored="your puzzles in progress and your settings",
+        purchases="There is one optional purchase that supports development. The game is fully "
+                  "playable without it.",
+        stored="your puzzles in progress, your settings, and whether you have made the optional "
+               "purchase",
         network="Your photos stay on your device — they are never uploaded to us. A connection "
                 "is only needed for purchases.",
+        terms=True,
     ),
 ]
 
