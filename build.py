@@ -21,17 +21,22 @@ GAMES = [
         icon="catchitall.png", tagline="Catch what falls before it lands",
         about=[
             "The game is built out of <b>locations</b> — separate worlds, each with its own "
-            "setting, playable characters, things to catch and a cartoon at the end.",
+            "setting, playable characters, its own way to play and a cartoon at the end.",
             "<b>One location is free and always will be.</b> You can play it from beginning to "
             "end without paying. Every further location is a separate one-time purchase, yours "
             "permanently once bought. No subscription, no currency, no timer.",
         ],
         howto=[
-            ("Catch the falling items.", "They roll off the shelves on both sides and drop. "
-             "Four buttons move you left or right, up or down."),
-            ("You start with 3 lives.", "Every item that hits the ground costs one."),
-            ("Earn lives back.", "After 20 catches, ten in a row without a miss returns a life."),
-            ("Catch 100 to finish", "a location and unlock its cartoon."),
+            ("Catch the falling items.", "In most locations things roll off the shelves on both "
+             "sides and drop. Four buttons move you left or right, up or down."),
+            ("Some locations invert that.", "In Lake Fishing the fish bite and the fishermen reel "
+             "them up. You move onto the line a fish is on and cut it, setting the fish free "
+             "before it is pulled out of the water."),
+            ("You start with 3 lives.", "Every item you fail to catch &mdash; or, in Lake Fishing, "
+             "every fish that gets landed &mdash; costs one."),
+            ("Earn lives back.", "After 20 catches, ten in a row without a miss returns a life. "
+             "Lake Fishing has no life recovery: the 3 you start with are all you get."),
+            ("Reach 100 to finish", "a location and unlock its cartoon."),
         ],
         purchases="Locations beyond the free one are one-time purchases.",
         stored="your best score for each location, and which locations you have unlocked",
