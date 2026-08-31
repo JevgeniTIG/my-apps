@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generates the static support site from the data below.
 
-Run after editing GAMES:  python3 build.py
+Run after editing APPS:  python3 build.py
 The generated .html files are committed — GitHub Pages serves them directly.
 """
 from pathlib import Path
@@ -15,7 +15,42 @@ UPDATED = "25 August 2026"
 # Everything here is checked against the App Store listing and the app's source.
 # If you are unsure whether a claim is true, leave it out.
 
-GAMES = [
+APPS = [
+    dict(
+        slug="decanted", name="Decanted", appid="6807045534",
+        icon="decanted.png", kind="app",
+        tagline="Photograph the label, keep the note",
+        about=[
+            "A private journal for the wine you drink. Photograph the label and Decanted reads "
+            "what it can &mdash; producer, name, vintage, region, grapes, alcohol &mdash; and fills "
+            "the form in for you. Everything it suggests is yours to correct before you save.",
+            "<b>There is no account and no server.</b> Your bottles, photos, notes and ratings are "
+            "stored on your device and nowhere else. Nothing is uploaded, and there is nothing to "
+            "sign in to.",
+        ],
+        howto=[
+            ("Photograph the label.", "Take a new photo or pick one you already have. The text is "
+             "read on your device, and nothing is sent anywhere to do it."),
+            ("Check what it read.", "The fields it filled in are marked, so you can see what came "
+             "from the label and what did not. Correct anything that is wrong."),
+            ("Rate it and add a note.", "A rating from 1 to 10, where you drank it, what you paid, "
+             "and whatever you want to remember."),
+            ("Find it again.", "Search by producer, name, region or grape, or filter by style, "
+             "country, vintage or rating. Similar bottles are suggested from what you have "
+             "already saved."),
+            ("Keep a copy.", "Export your whole journal &mdash; entries and photos &mdash; as a "
+             "single file you can store where you like, and import it back on another device."),
+        ],
+        purchases=None,
+        stored="the wines you add, their photos, your ratings, notes and tags, and your settings",
+        network="Decanted works with no connection at all. Reading a label and searching your "
+                "journal happen entirely on your device. The one exception: if you allow location "
+                "access, the app asks Apple to turn your coordinates into a place name so it can "
+                "fill in where you were &mdash; that request goes to Apple, and only the place "
+                "name is saved. Your coordinates are not stored, and you can leave location "
+                "switched off.",
+        terms=True,
+    ),
     dict(
         slug="catchitall", name="Catch It All!", appid="6788710927",
         icon="catchitall.png", tagline="Catch what falls before it lands",
@@ -156,11 +191,28 @@ def page(title, body, depth=0, desc=""):
 
 
 def support_page(g):
+    is_game = g.get("kind", "game") == "game"
+    howto_heading = "HOW TO PLAY" if is_game else "HOW IT WORKS"
     howto = "\n".join(
         f"    <li><b>{a}</b> {b}</li>" for a, b in g["howto"])
     about = "\n".join(f'  <p class="a">{p}</p>' for p in g["about"])
     terms_link = ' &nbsp;·&nbsp; <a href="terms.html">Terms of Use</a>' if g.get("terms") else ""
-    body = f"""  <a class="back" href="../">&larr; All games</a>
+    paid = g.get("purchases") is not None
+    restore_q = ("""  <p class="q">I made a purchase but it is not there.</p>
+  <p class="a">Look for <b>Restore Purchases</b> in the app. Purchases are tied to your Apple
+     Account, so this also works on a new device.</p>
+
+""" if paid else "")
+    charged_q = ("""  <p class="q">The purchase failed or was charged twice.</p>
+  <p class="a">Purchases and refunds are handled by Apple, not by us. Use
+     <a href="https://reportaproblem.apple.com">reportaproblem.apple.com</a>, and write to us as
+     well so we can help.</p>
+
+""" if paid else """  <p class="q">Does it cost anything?</p>
+  <p class="a">No. The app is free, and there is nothing to buy inside it.</p>
+
+""")
+    body = f"""  <a class="back" href="../">&larr; All apps</a>
 
   <header>
     <img src="../img/{g['icon']}" alt="{g['name']} app icon">
@@ -175,29 +227,20 @@ def support_page(g):
   <h2>ABOUT</h2>
 {about}
 
-  <h2>HOW TO PLAY</h2>
+  <h2>{howto_heading}</h2>
   <ol>
 {howto}
   </ol>
 
   <h2>QUESTIONS</h2>
 
-  <p class="q">I made a purchase but it is not there.</p>
-  <p class="a">Look for <b>Restore Purchases</b> in the app. Purchases are tied to your Apple
-     Account, so this also works on a new device.</p>
-
-  <p class="q">Does the game need an internet connection?</p>
+{restore_q}  <p class="q">Does the game need an internet connection?</p>
   <p class="a">{g['network']}</p>
 
   <p class="q">Are there ads?</p>
-  <p class="a">No. None of our games show ads.</p>
+  <p class="a">No. None of our apps show ads.</p>
 
-  <p class="q">The purchase failed or was charged twice.</p>
-  <p class="a">Purchases and refunds are handled by Apple, not by us. Use
-     <a href="https://reportaproblem.apple.com">reportaproblem.apple.com</a>, and write to us as
-     well so we can help.</p>
-
-  <h2>CONTACT</h2>
+{charged_q}  <h2>CONTACT</h2>
   <div class="mail">
     Questions, bugs or ideas — write to <a href="mailto:{MAIL}">{MAIL}</a>.
     Please mention your device and iOS version; it makes bugs much easier to find.
@@ -212,6 +255,17 @@ def support_page(g):
 
 
 def privacy_page(g):
+    purchases_section = (f"""  <h2>PURCHASES</h2>
+  <p>{g['purchases']} Payments are processed entirely by Apple. We never see or receive your
+     payment details — Apple tells the app only whether a purchase succeeded. Apple's handling of
+     that transaction is covered by
+     <a href="https://www.apple.com/legal/privacy/">Apple's Privacy Policy</a>.</p>
+
+""" if g.get("purchases") else """  <h2>PURCHASES</h2>
+  <p>There are none. The app is free and contains nothing to buy, so no payment information is
+     ever involved.</p>
+
+""")
     terms_link = ' &nbsp;·&nbsp; <a href="terms.html">Terms of Use</a>' if g.get("terms") else ""
     body = f"""  <a class="back" href="index.html">&larr; {g['name']}</a>
 
@@ -233,13 +287,7 @@ def privacy_page(g):
   <h2>CONNECTIVITY</h2>
   <p>{g['network']}</p>
 
-  <h2>PURCHASES</h2>
-  <p>{g['purchases']} Payments are processed entirely by Apple. We never see or receive your
-     payment details — Apple tells the app only whether a purchase succeeded. Apple's handling of
-     that transaction is covered by
-     <a href="https://www.apple.com/legal/privacy/">Apple's Privacy Policy</a>.</p>
-
-  <h2>CHILDREN</h2>
+{purchases_section}  <h2>CHILDREN</h2>
   <p>Because the app collects no data at all, it collects no data from children either. There is no
      advertising and there are no social features.</p>
 
@@ -260,15 +308,16 @@ def hub_page():
         <b>{g['name']}</b>
         <span>{g['tagline']}</span>
       </div>
-    </a>""" for g in GAMES)
+    </a>""" for g in APPS)
     body = f"""  <header class="hub">
     <div>
       <h1>{DEV}</h1>
-      <p class="sub">Small games for iPhone and iPad. No ads, no accounts, no data collection.</p>
+      <p class="sub">Small apps and games for iPhone and iPad. No ads, no accounts, no data
+         collection.</p>
     </div>
   </header>
 
-  <h2>GAMES</h2>
+  <h2>APPS</h2>
   <div class="cards">
 {cards}
   </div>
@@ -280,7 +329,7 @@ def hub_page():
   </div>
 
   <footer><span>© 2026 {DEV}</span></footer>"""
-    return page(f"{DEV} — Games", body, desc="Support pages for all games by " + DEV)
+    return page(f"{DEV} — Apps", body, desc="Support pages for all apps by " + DEV)
 
 
 # ── Write ─────────────────────────────────────────────────────────────────────
@@ -288,7 +337,7 @@ if __name__ == "__main__":
     written = []
     (ROOT / "index.html").write_text(hub_page())
     written.append("index.html")
-    for g in GAMES:
+    for g in APPS:
         d = ROOT / g["slug"]
         d.mkdir(exist_ok=True)
         (d / "index.html").write_text(support_page(g))
