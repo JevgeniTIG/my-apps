@@ -27,6 +27,10 @@ APPS = [
             "<b>There is no account and no server.</b> Your bottles, photos, notes and ratings are "
             "stored on your device and nowhere else. Nothing is uploaded, and there is nothing to "
             "sign in to.",
+            "Over time the journal adds up to a picture of what you actually drink &mdash; which "
+            "countries and styles, which vintages, where you were, and how you score. Your best "
+            "bottles are ranked from your own ratings alone: there is nobody else's score to "
+            "compare against, and none is asked for.",
         ],
         howto=[
             ("Photograph the label.", "Take a new photo or pick one you already have. The text is "
@@ -38,17 +42,30 @@ APPS = [
             ("Find it again.", "Search by producer, name, region or grape, or filter by style, "
              "country, vintage or rating. Similar bottles are suggested from what you have "
              "already saved."),
+            ("See what it adds up to.", "Charts of your collection by country, style, grape and "
+             "vintage, where you drank each bottle, and how you tend to score. Alongside them, "
+             "your top wines overall and within each style and country."),
+            ("Send a bottle to someone.", "Share wines with another Decanted user as a file. What "
+             "arrives is kept aside until they choose to add it, and their journal remembers who "
+             "sent it."),
+            ("Put your name to it.", "A name and a photograph of your own, if you want them. Both "
+             "stay on your phone; the name travels only inside a file you choose to send, and the "
+             "photograph never leaves at all."),
             ("Keep a copy.", "Export your whole journal &mdash; entries and photos &mdash; as a "
              "single file you can store where you like, and import it back on another device."),
         ],
         purchases=None,
-        stored="the wines you add, their photos, your ratings, notes and tags, and your settings",
+        stored="the wines you add, their photos, your ratings, notes and tags, the name and "
+               "photograph you set for yourself, and your settings",
         network="Decanted works with no connection at all. Reading a label and searching your "
                 "journal happen entirely on your device. The one exception: if you allow location "
                 "access, the app asks Apple to turn your coordinates into a place name so it can "
                 "fill in where you were &mdash; that request goes to Apple, and only the place "
                 "name is saved. Your coordinates are not stored, and you can leave location "
-                "switched off.",
+                "switched off. Sharing a wine sends a file the way any file leaves your phone "
+                "&mdash; you choose the app and the person, and nothing goes anywhere until you "
+                "do. Your profile photograph is never part of it: it is left out of shared files, "
+                "out of backups, and off the cards you export.",
         terms=True,
     ),
     dict(
