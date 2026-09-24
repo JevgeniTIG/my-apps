@@ -51,3 +51,19 @@ li{margin-bottom:6px}
 footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--line);
   color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 footer a{color:var(--muted)}
+
+/* Long-form pages: code, tables, quotes. */
+article p{margin:0 0 16px}
+article h2{margin-top:44px}
+article h3{font-size:17px;margin:30px 0 10px}
+.meta{color:var(--muted);margin:0 0 30px;font-size:15px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.5;margin:0 0 18px}
+code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:13.5px}
+p code,li code,td code{background:var(--card);border:1px solid var(--line);
+  border-radius:5px;padding:1px 5px}
+table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:14.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"Courier New",monospace;letter-spacing:1px;font-size:13px;color:var(--muted)}
+td.no{color:var(--muted)}
+blockquote{margin:0 0 18px;padding:2px 0 2px 16px;border-left:3px solid var(--line);color:var(--muted)}
