@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Apple's on-device LLM against a rule-based reader, on real wine labels</title>
-<meta name="description" content="A small benchmark: Apple's Foundation Models framework versus a rule-based extractor, reading eight real wine labels recognised by Vision on the device.">
+<title>Foundation Models against a rule-based parser, on real OCR text</title>
+<meta name="description" content="Apple's on-device model versus three hundred lines of rules, on wine labels recognised by Vision: the API's sharp edges, a reproducible benchmark, and why the rules stayed.">
 <link rel="icon" href="../img/favicon.png">
 <link rel="stylesheet" href="../style.css">
 </head>
@@ -13,27 +13,105 @@
 <a class="back" href="../">&larr; All apps</a>
 
 <article>
-<h1>An on-device LLM against a rule-based reader</h1>
-<p class="meta">Eight real wine labels, Apple's Foundation Models framework, and a result I did not expect. 24 September 2026.</p>
+<h1>Foundation Models against a rule-based parser</h1>
+<p class="meta">What the on-device model does to messy OCR text, the four API edges I cut myself on, and a benchmark you can copy. 24 September 2026.</p>
 
-<p>I write a small iPhone app called Decanted: a journal for the wine you drink. You photograph
-the label, and the app fills in producer, name, vintage, region, grapes and alcohol so you only
-have to correct what it got wrong. The text comes out of Apple's Vision framework on the device;
-nothing is uploaded, because the app has no server to upload it to.</p>
+<p>I have an app that reads wine labels. Vision recognises the text on the device, and about three
+hundred lines of rules turn that text into fields: producer, name, vintage, region, grapes,
+alcohol. Regular expressions for the numbers, catalog lookups for the rest. Unfashionable code.</p>
 
-<p>Turning recognised text into fields is done by about three hundred lines of rules: regular
-expressions for the year and the alcohol, and lookups against bundled catalogs of grape varieties
-and wine places. It is unfashionable code. When iOS 26 shipped a language model that runs on the
-phone for free, the obvious question was whether the unfashionable code should go.</p>
+<p>iOS 26 ships a language model on the phone, free and offline, so the obvious question was
+whether the unfashionable code should go. This is what I found, starting with the parts of the
+API that cost me time.</p>
 
-<h2>The label that started it</h2>
+<h2>Four things worth knowing before you start</h2>
 
-<p>A user — me — photographed a bottle of Zinfandel and got nonsense: producer
-<code>LODI-CALIFORNIP</code>, wine <code>FANDE</code>. The label reads
-<b>THINK BIG! GREAT ZINFANDEL, LODI-CALIFORNIA, VAT.66</b>, in large stencilled capitals.</p>
+<h3>1. Check availability, and handle all three refusals</h3>
 
-<p>Running the same photograph through Vision with the app's settings — <code>.accurate</code>,
-language correction on — gives this, with the engine's own confidence per line:</p>
+<p><code>SystemLanguageModel</code> can be unavailable for reasons you cannot fix from code, so
+every path needs a fallback that is not the model:</p>
+
+<pre>let model = SystemLanguageModel(useCase: .general,
+                                guardrails: .permissiveContentTransformations)
+switch model.availability {
+case .available: break
+case .unavailable(let reason):
+    // .deviceNotEligible — no Apple Intelligence on this device
+    // .appleIntelligenceNotEnabled — the user has not turned it on
+    // .modelNotReady — downloading, or the device is busy
+    return nil
+}</pre>
+
+<h3>2. The default guardrails may refuse your domain</h3>
+
+<p>Mine is wine. The default guardrails treat alcohol as sensitive, and a prompt full of it can
+come back as <code>guardrailViolation</code>. <code>.permissiveContentTransformations</code>, shown
+above, is the documented escape hatch for transforming user-supplied content, and it is the right
+one here: the text comes from the user's own photograph.</p>
+
+<h3>3. Nothing is reproducible until you ask for greedy sampling</h3>
+
+<p>My first runs gave different answers to the same input on consecutive calls, which makes a
+regression test impossible. Sampling is probabilistic by default:</p>
+
+<pre>let response = try await session.respond(
+    to: prompt,
+    generating: LabelReading.self,
+    options: GenerationOptions(sampling: .greedy))</pre>
+
+<p>With <code>.greedy</code> the same eight labels produced byte-identical output across runs.</p>
+
+<h3>4. <code>representNilExplicitlyInGeneratedContent</code> crashed the request</h3>
+
+<p>I wanted optional fields the model could decline to fill. The iOS 26.4 overload looks made for
+it:</p>
+
+<pre>@Generable(representNilExplicitlyInGeneratedContent: true)
+struct LabelReading { var producer: String? /* ... */ }</pre>
+
+<p>Every request then failed inside the framework, before the model ran:</p>
+
+<pre>DecodingError.keyNotFound: Key 'title' not found in keyed decoding container.
+Path: properties.producer</pre>
+
+<p>Plain <code>@Generable</code> with ordinary optionals works, so that is what I shipped.
+(Seen on macOS 26.6 with the iOS 26.5 SDK; if it works for you, I would like to know.)</p>
+
+<h2>The schema and the prompt</h2>
+
+<pre>@Generable
+struct LabelReading {
+  @Guide(description: "The winery or producer. nil unless a line clearly names one.")
+  var producer: String?
+  @Guide(description: "The wine's own name, with camera misreadings corrected.")
+  var name: String?
+  @Guide(description: "Grape varieties, in standard spelling, joining words split over two lines.")
+  var grapes: [String]
+  @Guide(description: "Appellation or sub-region such as Lodi or Cornas. nil if none.")
+  var appellation: String?
+  @Guide(description: "State or wider region such as California. nil if none.")
+  var region: String?
+  @Guide(description: "Country in English. nil if it cannot be told.")
+  var country: String?
+  @Guide(description: "The vintage year ONLY if four digits of a year appear. Otherwise nil.")
+  var vintage: Int?
+}
+
+let session = LanguageModelSession(model: model, instructions: """
+You correct what a camera read from a wine label. Letters are often misread
+(BREAT is GREAT, CALIFORNIP is CALIFORNIA) and a word may be split over two lines
+(ZIN then FANDEL is ZINFANDEL). Shop stickers and codes belong to no field.
+Only report what the text supports. When unsure, answer nil. Never guess a year.
+""")</pre>
+
+<p>Note the last instruction. The first thing the model did was guess a year — 2022 on one run,
+2024 on the next — for a label that carries no vintage at all. Greedy sampling and an optional
+field stopped that particular invention, but it set the tone for what follows.</p>
+
+<h2>The input is worse than you think</h2>
+
+<p>Benchmarks on clean strings flatter everyone. Here is what Vision actually returns for one
+bottle, with its own confidence per line:</p>
 
 <pre>0.30  GRLBSE          &lt;- a shop sticker
 0.50  Voini Wi        &lt;- the same sticker
@@ -44,141 +122,101 @@ language correction on — gives this, with the engine's own confidence per line
 1.00  ODI-CALIFORNE   &lt;- LODI-CALIFORNIA, misread at both ends
 1.00  UAT.66          &lt;- VAT.66</pre>
 
-<p>Vision did well. The rules did not, and for three reasons worth naming. "Zinfandel" is set so
-large that it wraps, and neither <code>ZIN</code> nor <code>FANDEL</code> is a grape on its own.
-<code>LODI-CALIFORNIA</code> is two places joined by a dash, misread at both ends, and Lodi was
-missing from the catalog anyway. And because neither the grape nor the place was recognised, both
-lines were left to the routine that guesses the producer and the name — which picks the largest
-type on the bottle. The largest type on the bottle was exactly those two lines.</p>
+<p>That per-line confidence is the most underused thing Vision gives you, and I will come back
+to it.</p>
 
-<h2>Handing it to the model</h2>
+<h2>The benchmark</h2>
 
-<p>Apple's Foundation Models framework gives you a few-billion-parameter model on the device, free,
-offline, with structured output. The whole integration is a struct and a prompt:</p>
-
-<pre>@Generable
-struct LabelReading {
-  @Guide(description: "The winery or producer. nil unless a line clearly names one.")
-  var producer: String?
-  @Guide(description: "Grape varieties, in standard spelling, joining words split over two lines.")
-  var grapes: [String]
-  @Guide(description: "The vintage year ONLY if four digits of a year appear. Otherwise nil.")
-  var vintage: Int?
-  // ...name, appellation, region, country
-}
-
-let session = LanguageModelSession(model: model, instructions: """
-You correct what a camera read from a wine label. Letters are often misread
-(BREAT is GREAT, CALIFORNIP is CALIFORNIA) and a word may be split over two lines
-(ZIN then FANDEL is ZINFANDEL). Shop stickers and codes belong to no field.
-Only report what the text supports. When unsure, answer nil. Never guess a year.
-""")</pre>
-
-<p>Two practical notes before the results. The default guardrails refuse a certain amount of
-alcohol-related content, so a wine app wants
-<code>SystemLanguageModel(guardrails: .permissiveContentTransformations)</code>. And the first
-runs were not reproducible until sampling was set to <code>.greedy</code>; the same label gave
-different answers on consecutive calls.</p>
-
-<p>The first thing the model did, with an instruction in front of it saying <i>never guess a
-year</i>, was guess a year. The label carries no vintage at all. It returned 2022. On the next
-run, 2024. Greedy sampling and an optional field fixed that particular failure — but a plausible
-year nobody printed is exactly the kind of mistake a journal must not make, because a blank field
-is obvious and a wrong one is not.</p>
-
-<h2>Eight bottles</h2>
-
-<p>One label proves nothing, so I ran both readers over eight photographs of my own bottles —
-each one recognised by Vision first, so both approaches saw exactly the same text. The model ran
-on macOS 26.6, which carries the same on-device model as the phone.</p>
+<p>Eight photographs of my own bottles, each recognised by Vision once, then handed to both
+readers so they saw identical input. The model ran on macOS 26.6, which carries the same
+on-device model as the phone. One to three and a half seconds per label.</p>
 
 <table>
 <tr><th>Label</th><th>Rules</th><th>On-device model</th></tr>
 <tr><td>La Tarara, Rioja</td>
-    <td>producer La Tarara, Tempranillo, Rioja, Spain</td>
+    <td>producer, grape, appellation, country</td>
     <td class="no">producer "Marjane" — the shop's sticker</td></tr>
 <tr><td>Masca del Tacco, Puglia</td>
-    <td class="no">grape missed: Susumaniello not in the catalog</td>
+    <td class="no">grape missed — not in my catalog</td>
     <td>producer and grape both right</td></tr>
 <tr><td>Pays d'Oc, Pinot Noir &ndash; Merlot</td>
-    <td class="no">appellation missed; name taken from the IGP boilerplate</td>
-    <td>Pays d'Oc, both grapes</td></tr>
-<tr><td>Chianti "When We Dance"</td>
-    <td>Chianti, Tuscany, Italy, 2024</td>
-    <td class="no">invented a grape variety called "Rabago"</td></tr>
+    <td class="no">appellation missed; name taken from IGP boilerplate</td>
+    <td>appellation and both grapes</td></tr>
+<tr><td>Chianti</td>
+    <td>appellation, region, country, vintage</td>
+    <td class="no">invented a grape called "Rabago"</td></tr>
 <tr><td>Ch&acirc;teau Citran, Bordeaux</td>
-    <td>Citran, Bordeaux, 2021</td>
-    <td class="no">invented a grape variety called "Citran"</td></tr>
+    <td>producer, region, vintage</td>
+    <td class="no">invented a grape called "Citran"</td></tr>
 <tr><td>Gies-D&uuml;ppel Sp&auml;tburgunder</td>
-    <td>Pinot Noir, 2023, no country claimed</td>
-    <td class="no">region Burgundy, country France &mdash; a German wine</td></tr>
+    <td>grape, vintage, no country claimed</td>
+    <td class="no">region Burgundy, country France — a German wine</td></tr>
 <tr><td>Andr&eacute; Delorme, Cr&eacute;mant</td>
     <td class="no">appellation taken as the name</td>
-    <td class="no">refused: <code>unsupportedLanguageOrLocale</code></td></tr>
+    <td class="no">threw <code>unsupportedLanguageOrLocale</code></td></tr>
 <tr><td>Think Big! Zinfandel</td>
-    <td class="no">the label above: grape and place both missed</td>
+    <td class="no">grape and place both missed</td>
     <td class="no">sticker as producer, grape still split</td></tr>
 </table>
 
-<p>Rules won four, the model won two, both failed one, and on the French label the model refused
-to answer at all — "Unsupported language" — which rules out a good share of the wine world.</p>
+<p>Four to two, one shared failure, and one refusal: the French label came back as
+<code>GenerationError.unsupportedLanguageOrLocale</code>, "Unsupported language". If your input can
+be in any language your users photograph, that error is not an edge case.</p>
 
-<p>The score is not the interesting part. The <i>kind</i> of error is. The rules fail by leaving a
-field empty: you see the gap and you fill it in. The model fails by being confident. "Rabago" and
-"Citran" are not grapes, they are a place and a château; nothing on either label suggests a
-variety, and the model supplied one anyway. Sp&auml;tburgunder is the German name for Pinot Noir,
-and the model let the "burgunder" in it carry the bottle to Burgundy, France. A journal that
-quietly records a German wine as French is worse than one that records nothing.</p>
+<h2>The errors are the point, not the score</h2>
 
-<h2>What the model was right about</h2>
+<p>The rules fail by leaving a field empty. You see the gap and you fill it in. The model fails
+with confidence: "Rabago" and "Citran" are a village and a château, and nothing on either label
+suggests a grape variety — it supplied one because the schema had a field for it. Sp&auml;tburgunder
+is the German name for Pinot Noir, and the "burgunder" inside it was enough to move the bottle to
+Burgundy, France.</p>
 
-<p>Both of its wins turned out to be my own gaps. Susumaniello was not in the grape catalog. Pays
-d'Oc was not in the places. The model knew them because it has read the internet; my catalog knew
-neither because I had written it by hand from memory. That is a fair criticism of the rules, and
-it is fixable with data rather than inference — so I fixed it: the catalogs went from 127 grape
-varieties to 206 with their local synonyms, and from 108 wine places to 434.</p>
+<p>For a journal, a plausible wrong value is worse than a blank one, because the user will not
+notice it. That asymmetry, not the four-to-two, is why the rules stayed.</p>
 
-<p>The three failures on the Zinfandel label were fixable too, and none of them needed a model:</p>
+<h2>What the model was right about was data, not reasoning</h2>
+
+<p>Both of its wins were gaps in my catalogs: Susumaniello was not in my grape list, Pays d'Oc not
+in my places. The model knew them because it has read the internet. That is a fair criticism, and
+the fix is a bigger list rather than an inference engine — mine went from 127 grape varieties to
+206 with local synonyms, and from 108 wine places to 434.</p>
+
+<p>The three failures on the Zinfandel label were fixable in the rules, and the fixes are
+generic:</p>
 
 <ul>
-<li>Two adjacent single-word lines are now tried joined, so <code>ZIN</code> + <code>FANDEL</code>
-resolves to Zinfandel.</li>
-<li>A line with a dash is resolved part by part, each part tolerant of a misread letter or two, so
-<code>ODI-CALIFORNE</code> still yields California.</li>
-<li>A line the recogniser itself scored below 50% is no longer a candidate for the producer's name,
-which drops shop stickers — the exact thing the model fell for on two labels.</li>
+<li><b>Join adjacent lines.</b> Two single-word lines are tried concatenated, so
+<code>ZIN</code> + <code>FANDEL</code> resolves. Large type wraps; recognisers report the halves.</li>
+<li><b>Split on dashes and resolve each part.</b> <code>ODI-CALIFORNE</code> yields California
+from its second half.</li>
+<li><b>Use the confidence.</b> A line the recogniser scored below 0.5 is no longer eligible to be
+a name. That one rule drops shop stickers — the exact trap the model fell into twice.</li>
 </ul>
 
-<p>Lookups are now tolerant in general: one edit for words of five to eight characters, two beyond
-that, nothing below five, and a tie is refused rather than guessed. "Sauvignen Blanc" finds
+<p>Lookups are tolerant now: bounded edit distance, one edit for five to eight characters, two
+beyond, nothing below five, and a tie refused rather than guessed. "Sauvignen Blanc" finds
 Sauvignon Blanc; "Gamza" does not become Gamay.</p>
 
-<p>All eight labels are now fixtures in the test suite — Vision's own output, confidences and boxes
-included. Every future change to the reader is judged against real bottles instead of against
-strings I invented.</p>
+<h2>What I would take from this</h2>
 
-<h2>What this does and does not show</h2>
+<p>It does not show that models are bad at this. A large multimodal model given the photograph
+would likely beat both readers — it would see the gold foil Vision missed entirely. It shows
+something narrower: the free, offline model on the device today, fed the text a phone camera
+produced, was not better than rules and a good list, and it failed in the more expensive
+direction.</p>
 
-<p>It does not show that language models are bad at reading labels. A large multimodal model,
-given the photograph rather than the recognised text, would almost certainly beat both of these
-readers; it would see the gold foil that Vision missed entirely. What it shows is narrower and, I
-think, more useful: the free model that runs on the phone today, on text a phone camera produced,
-was not better than a few hundred lines of rules and a good list — and it was worse in the way
-that costs a user most.</p>
+<p>If you try it anyway — and it is worth trying, the integration is an afternoon — then: build a
+fixture set from real captures before you compare anything, keep the recogniser's confidence
+values, set <code>.greedy</code> so your tests mean something, and treat every field the model
+fills as a claim to be checked against the input rather than an answer.</p>
 
-<p>There is also the reason I did not reach for a cloud model, which is the same reason the app
-has no account: the photographs and the notes stay on the device. An on-device model was appealing
-precisely because it would not break that. It simply did not earn its place.</p>
-
-<p>I will try it again when the model grows, and the benchmark is now sitting in the repository
-waiting for it. Until then the unfashionable code stays.</p>
+<p>All eight labels are now regression fixtures in my test suite, stored as Vision's raw output
+with confidences and boxes, so the next model gets the same exam.</p>
 
 <hr style="border:none;border-top:1px solid var(--line);margin:40px 0 24px">
-<p class="meta">Decanted is free on the
-<a href="https://apps.apple.com/app/id6807045534">App Store</a> — no account, no server, no ads.
-If it misreads a bottle you own, send the photograph to
-<a href="mailto:agnevstsikov@gmail.com">agnevstsikov@gmail.com</a>; each label that fails becomes a
-test.</p>
+<p class="meta">The app is <a href="https://apps.apple.com/app/id6807045534">Decanted</a>, a wine
+journal that keeps everything on the device. If a label defeats it, I would like the photograph —
+<a href="mailto:agnevstsikov@gmail.com">agnevstsikov@gmail.com</a>.</p>
 </article>
 
 <footer>
