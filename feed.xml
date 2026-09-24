@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Jevgeni Agnevstsikov — Writing</title>
+  <link>https://jevgenitig.github.io/my-apps/writing/</link>
+  <atom:link href="https://jevgenitig.github.io/my-apps/feed.xml" rel="self" type="application/rss+xml"/>
+  <description>Notes from building small Apple-platform apps: Swift, on-device machine
+    learning, App Store practice.</description>
+  <language>en</language>
+  <item>
+    <title>Foundation Models against a rule-based parser</title>
+    <link>https://jevgenitig.github.io/my-apps/writing/on-device-llm-vs-rules.html</link>
+    <guid isPermaLink="true">https://jevgenitig.github.io/my-apps/writing/on-device-llm-vs-rules.html</guid>
+    <description>Apple's on-device model versus three hundred lines of rules, on wine labels recognised by Vision: the API's sharp edges, a reproducible benchmark, and why the rules stayed.</description>
+    <pubDate>Thu, 24 Sep 2026 09:00:00 +0000</pubDate>
+  </item>
+</channel>
+</rss>

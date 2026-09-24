@@ -4,12 +4,28 @@
 Run after editing APPS:  python3 build.py
 The generated .html files are committed — GitHub Pages serves them directly.
 """
+import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 DEV = "Jevgeni Agnevstsikov"
 MAIL = "agnevstsikov@gmail.com"
 UPDATED = "25 August 2026"
+
+SITE = "https://jevgenitig.github.io/my-apps"
+
+# Articles are written by hand in writing/. Only this list, the index and the
+# feed are generated — add an entry here when you publish one.
+WRITING = [
+    dict(
+        slug="on-device-llm-vs-rules",
+        title="Foundation Models against a rule-based parser",
+        date="2026-09-24",  # RFC-822 conversion happens below
+        summary="Apple's on-device model versus three hundred lines of rules, on wine "
+                "labels recognised by Vision: the API's sharp edges, a reproducible "
+                "benchmark, and why the rules stayed.",
+    ),
+]
 
 # ── Content ───────────────────────────────────────────────────────────────────
 # Everything here is checked against the App Store listing and the app's source.
@@ -197,6 +213,7 @@ def page(title, body, depth=0, desc=""):
 {f'<meta name="description" content="{desc}">' if desc else ''}
 <link rel="icon" href="{up}img/favicon.png">
 <link rel="stylesheet" href="{up}style.css">
+<link rel="alternate" type="application/rss+xml" title="{DEV} — Writing" href="{up}feed.xml">
 </head>
 <body>
 <div class="wrap">
@@ -349,6 +366,62 @@ def hub_page():
     return page(f"{DEV} — Apps", body, desc="Support pages for all apps by " + DEV)
 
 
+def writing_index():
+    items = "\n".join(f"""    <a class="card" href="{w['slug']}.html">
+      <div>
+        <b>{w['title']}</b>
+        <span>{w['date']} &mdash; {w['summary']}</span>
+      </div>
+    </a>""" for w in WRITING)
+    body = f"""  <a class="back" href="../">&larr; All apps</a>
+  <header class="hub">
+    <div>
+      <h1>WRITING</h1>
+      <p class="sub">Notes from building the apps.</p>
+    </div>
+  </header>
+
+  <div class="cards">
+{items}
+  </div>
+
+  <footer><span>© 2026 {DEV}</span><a href="../feed.xml">RSS</a></footer>"""
+    return page(f"Writing — {DEV}", body, depth=1,
+                desc="Articles about building small Apple-platform apps.")
+
+
+def feed():
+    """RSS 2.0. The iOS Dev Directory and most readers want this, not JSON Feed."""
+    def rfc822(date):
+        y, m, d = (int(x) for x in date.split("-"))
+        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        weekday = days[datetime.date(y, m, d).weekday()]
+        return f"{weekday}, {d:02d} {months[m - 1]} {y} 09:00:00 +0000"
+
+    items = "\n".join(f"""  <item>
+    <title>{w['title']}</title>
+    <link>{SITE}/writing/{w['slug']}.html</link>
+    <guid isPermaLink="true">{SITE}/writing/{w['slug']}.html</guid>
+    <description>{w['summary']}</description>
+    <pubDate>{rfc822(w['date'])}</pubDate>
+  </item>""" for w in WRITING)
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>{DEV} — Writing</title>
+  <link>{SITE}/writing/</link>
+  <atom:link href="{SITE}/feed.xml" rel="self" type="application/rss+xml"/>
+  <description>Notes from building small Apple-platform apps: Swift, on-device machine
+    learning, App Store practice.</description>
+  <language>en</language>
+{items}
+</channel>
+</rss>
+"""
+
+
 # ── Write ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     written = []
@@ -360,7 +433,11 @@ if __name__ == "__main__":
         (d / "index.html").write_text(support_page(g))
         (d / "privacy.html").write_text(privacy_page(g))
         written += [f"{g['slug']}/index.html", f"{g['slug']}/privacy.html"]
+    (ROOT / "writing").mkdir(exist_ok=True)
+    (ROOT / "writing" / "index.html").write_text(writing_index())
+    (ROOT / "feed.xml").write_text(feed())
+    written += ["writing/index.html", "feed.xml"]
     print("wrote:")
     for w in written:
         print(" ", w)
-    print("\nterms.html files are hand-written and not regenerated.")
+    print("\nterms.html and writing/*.html are hand-written and not regenerated.")
